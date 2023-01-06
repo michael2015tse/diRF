@@ -106,6 +106,7 @@ class diRiskFactor_BETA(RiskFactorBase):
         rfree_return = pd.Series(1.02**(1.0/365) - 1, index=self.dates, name='riskfree_returns')
         # calc 
         xp_beta = calc_descriptor_beta(stock_return, rfree_return)
+        xp_beta = xp_beta.where(self.m_valid, np.nan)
         xp_beta = ut.winsorize_mad(xp_beta, k=5)
         xp_beta = ut.normalize(xp_beta, weight=self.weight)
         # filling
