@@ -1,0 +1,6 @@
+__pycache__/
+results/
+*csv
+__pycache__/riskfactor__beta.cpython-38.pyc
+__pycache__/riskfactor__size.cpython-38.pyc
+__pycache__/riskfactorbase.cpython-38.pyc

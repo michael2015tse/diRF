@@ -58,7 +58,7 @@ class RiskFactorBase(ABC):
         self.m_valid2 = self.m_valid & (self.f_loaddata('BaseData.tvrvolume') >= 100) # Normal trading
         self.weight  = self.f_loaddata('BaseData.mkt_cap')
         self.weight  = ut.scale_to_one(self.weight.where(self.m_valid, np.nan))
-        self.listdays= self.f_nda2dfa((self.f_loaddata('BaseData.close', startdate=None)>0).expanding().sum())
+        self.listdays= self.f_nda2dfa((self.f_loaddata('BaseData.close', startdate=0)>0).expanding().sum())
 
     @abstractmethod
     def run(self):

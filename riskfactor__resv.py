@@ -4,6 +4,7 @@
 
 changelog:
 20221225  jyxie:  init ver. mimic BarraCNE5D, cs_corr > 0.97 since 2019
+20230106  jyxie:  add `live` working_type to accelerate computation
 """
 
 import sys, os
@@ -12,6 +13,8 @@ from utils import io, utils as ut
 import numpy as np, pandas as pd, bottleneck as bn
 from functools import partial
 from typing import Any
+import optparse
+from datetime import datetime
 from riskfactorbase import RiskFactorBase
 from riskfactor__beta import diRiskFactor_BETA
 from riskfactor__size import diRiskFactor_SIZE
@@ -22,8 +25,10 @@ class diRiskFactor_RESV(RiskFactorBase):
         if working_type not in ('live', 'hist'):
             raise ValueError("`working_type must be `live` or `hist`")
         _dates = io.load_dates(startdate, enddate)
-        _startdate = 20130101 #_dates[0] if working_type == 'hist' else 20130101
-        _enddate = _dates[-1]
+        if working_type == 'hist':
+            _startdate, _enddate = _dates[0],  _dates[-1]
+        else:
+            _startdate, _enddate = _dates[-600],  _dates[-1]
         super(diRiskFactor_RESV, self).__init__(
             startdate=_startdate,
             enddate=_enddate,
@@ -35,8 +40,8 @@ class diRiskFactor_RESV(RiskFactorBase):
     def init(self):
         super().init()
         # Size 和 Beta, 用于回归，也可 get_data
-        _dirf_size = diRiskFactor_SIZE(self.startdate, self.enddate, self.delay, working_type=self.working_type)
-        _dirf_beta = diRiskFactor_BETA(self.startdate, self.enddate, self.delay, working_type=self.working_type)
+        _dirf_size = diRiskFactor_SIZE(self.startdate, self.enddate, self.delay, working_type='hist')
+        _dirf_beta = diRiskFactor_BETA(self.startdate, self.enddate, self.delay, working_type='hist')
         _dirf_size.run()
         _dirf_beta.run()
         self.__size = _dirf_size.runresult.copy()
@@ -182,7 +187,19 @@ class diRiskFactor_RESV(RiskFactorBase):
         xp_resv = ut.normalize(xp_resv, self.weight)
         self.__runresult = xp_resv
         
+
 if __name__ == '__main__':
-    diRF = diRiskFactor_RESV(startdate=20130101, enddate=20221219, working_type='hist')
+    usage = 'Resv factor'
+    parser = optparse.OptionParser(usage)
+    parser.add_option('--startdate', action='store', dest='startdate', type='int', default=20130101, help='set startdate. [default = %default]')
+    parser.add_option('--enddate', action='store', dest='enddate', type='int', default=-1, help='set enddate, if enddate < 0, set enddate to today. [default = %default]')
+    parser.add_option('--live', action='store_true', dest='live', default=False, help='if `live` worktype [default = %default]')
+    options, args = parser.parse_args()
+    if options.enddate < 0:
+        options.enddate = int(datetime.today().strftime('%Y%m%d'))
+
+    diRF = diRiskFactor_RESV(startdate=options.startdate, enddate=options.enddate, working_type='live' if options.live else 'hist')
     diRF.run()
-    print(diRF.runresult)
+    print(diRF.runresult.tail(10))
+
+    diRF.runresult.tail(10).to_parquet(f'./results/[diRF]__[Resv]__[{diRF.working_type}].pqt')
